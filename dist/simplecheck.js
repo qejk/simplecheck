@@ -215,7 +215,13 @@ function checkType(value, pattern) {
     }
   }
   if (!valid) {
-    throw new MatchError('Invalid match (%s expected to be %s)', JSON.stringify(value), JSON.stringify(pattern));
+    var expectedType = JSON.stringify(pattern);
+    if (expectedType === undefined && pattern.name) {
+      expectedType = pattern.name;
+      throw new MatchError('Invalid match (%s expected to be instance of %s)', JSON.stringify(value), expectedType);
+    } else {
+      throw new MatchError('Invalid match (%s expected to be %s)', JSON.stringify(value), expectedType);
+    }
   }
   return valid;
 }
