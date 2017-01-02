@@ -235,16 +235,24 @@ function checkType(value, pattern) {
       return true;
     } else if (!(value instanceof pattern)) {
       var expectedType = getExpectedType(pattern);
-      throw new MatchError('Expected %s to be an instance of %s', JSON.stringify(value), expectedType);
+      var msg = undefined;
+      if (expectedType === 'function') {
+        msg = 'Expected %s to be a %s';
+      } else {
+        msg = 'Expected %s to be an instance of %s';
+      }
+      throw new MatchError(msg, JSON.stringify(value), expectedType);
     }
   }
   if (!valid) {
     var expectedType = getExpectedType(pattern);
+    var msg = undefined;
     if (JSON.stringify(pattern) === undefined && pattern.name) {
-      throw new MatchError('Invalid match (%s expected to be instance of %s)', JSON.stringify(value), expectedType);
+      msg = 'Invalid match (%s expected to be instance of %s)';
     } else {
-      throw new MatchError('Invalid match (%s expected to be %s)', JSON.stringify(value), expectedType);
+      msg = 'Invalid match (%s expected to be %s)';
     }
+    throw new MatchError(msg, JSON.stringify(value), expectedType);
   }
   return valid;
 }
