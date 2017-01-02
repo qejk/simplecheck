@@ -110,6 +110,18 @@ function anything() {
   return true;
 }
 
+var typesInArray = function typesInArray(choices) {
+  var names = choices.map(function (choice) {
+    if (choice !== null && choice.constructor && choice.constructor === Array) {
+      return '[(' + typesInArray(choice) + ']';
+    } else if (choice === null) {
+      return 'null';
+    } else {
+      return choice.name;
+    }
+  });
+  return JSON.stringify(names);
+};
 /**
  * Ensure value matches one of the provided arguments (arguments can be anything that can be used as a matcher, like
  * String or an object with matcher properties)
@@ -125,7 +137,7 @@ function oneOf() {
         return true;
       } catch (err) {}
     }
-    throw new MatchError('Expected %s to be one of %s', JSON.stringify(value), JSON.stringify(args));
+    throw new MatchError('Expected %s to be one of %s', JSON.stringify(value), typesInArray(args));
   };
 }
 
