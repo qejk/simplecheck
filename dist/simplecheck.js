@@ -173,7 +173,7 @@ function matches(value, pattern) {
   }
 }
 
-function handleClassPattern(value, pattern) {
+function validateClassPattern(value, pattern) {
   var valid = undefined;
   // Value is an instance, pattern is a class
   if (value.constructor.name !== 'Function' && pattern.constructor.name === 'Function') {
@@ -185,13 +185,24 @@ function handleClassPattern(value, pattern) {
   return valid;
 }
 
+function getExpectedType(pattern) {
+  var expectedType = JSON.stringify(pattern);
+  if (expectedType === undefined && pattern.name) {
+    expectedType = pattern.name;
+  }
+  if (expectedType === 'Function') {
+    expectedType = expectedType.toLowerCase();
+  }
+  return expectedType;
+}
+
 function checkType(value, pattern) {
   var strict = arguments.length <= 2 || arguments[2] === undefined ? true : arguments[2];
 
   var valid = true;
   var typeMap = scalarTypeMap(pattern);
   if (typeMap) {
-    if (typeof value !== typeMap) {
+    if (typeof value !== typeMap.toLowerCase()) {
       throw new MatchError('Expected %s to be a %s', JSON.stringify(value), typeMap);
     }
   } else if (pattern instanceof Function && nativeTypes.indexOf(pattern) < 0) {
@@ -200,7 +211,7 @@ function checkType(value, pattern) {
       valid = pattern(value);
     } catch (e) {
       if (e.message === 'Cannot call a class as a function' && pattern.constructor) {
-        valid = handleClassPattern(value, pattern);
+        valid = validateClassPattern(value, pattern);
       } else {
         // Fallback
         valid = pattern(value);
@@ -208,7 +219,7 @@ function checkType(value, pattern) {
     }
     // Forgot to run Space.domain.ValueObject with new
     if (valid === undefined) {
-      valid = handleClassPattern(value, pattern);
+      valid = validateClassPattern(value, pattern);
     }
   } else if (pattern instanceof Array && nativeTypes.indexOf(pattern) < 0) {
     valid = checkArray(value, pattern[0]);
@@ -223,17 +234,13 @@ function checkType(value, pattern) {
     if (value === pattern) {
       return true;
     } else if (!(value instanceof pattern)) {
-      var expectedType = JSON.stringify(pattern);
-      if (expectedType === undefined && pattern.name) {
-        expectedType = pattern.name;
-      }
+      var expectedType = getExpectedType(pattern);
       throw new MatchError('Expected %s to be an instance of %s', JSON.stringify(value), expectedType);
     }
   }
   if (!valid) {
-    var expectedType = JSON.stringify(pattern);
-    if (expectedType === undefined && pattern.name) {
-      expectedType = pattern.name;
+    var expectedType = getExpectedType(pattern);
+    if (JSON.stringify(pattern) === undefined && pattern.name) {
       throw new MatchError('Invalid match (%s expected to be instance of %s)', JSON.stringify(value), expectedType);
     } else {
       throw new MatchError('Invalid match (%s expected to be %s)', JSON.stringify(value), expectedType);
