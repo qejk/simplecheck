@@ -210,7 +210,7 @@ function checkType(value, pattern) {
       // Pattern is a class that should be run with new
       valid = pattern(value);
     } catch (e) {
-      if (e.message === 'Cannot call a class as a function' && pattern.constructor) {
+      if (pattern.constructor) {
         valid = validateClassPattern(value, pattern);
       } else {
         // Fallback
