@@ -210,7 +210,10 @@ function checkType(value, pattern) {
       // Pattern is a class that should be run with new
       valid = pattern(value);
     } catch (e) {
-      if (pattern.constructor) {
+      // Fallow up from onOf
+      if (e.name == 'MatchError') {
+        throw e;
+      } else if (pattern.constructor) {
         valid = validateClassPattern(value, pattern);
       } else {
         // Fallback
