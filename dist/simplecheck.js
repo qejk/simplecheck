@@ -4,7 +4,7 @@ Object.defineProperty(exports, '__esModule', {
   value: true
 });
 
-var _get = function get(_x7, _x8, _x9) { var _again = true; _function: while (_again) { var object = _x7, property = _x8, receiver = _x9; desc = parent = getter = undefined; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x7 = parent; _x8 = property; _x9 = receiver; _again = true; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+var _get = function get(_x7, _x8, _x9) { var _again = true; _function: while (_again) { var object = _x7, property = _x8, receiver = _x9; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x7 = parent; _x8 = property; _x9 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
 
 exports.optional = optional;
 exports.anything = anything;
@@ -110,6 +110,18 @@ function anything() {
   return true;
 }
 
+var typesInArray = function typesInArray(choices) {
+  var names = choices.map(function (choice) {
+    if (choice !== null && choice.constructor && choice.constructor === Array) {
+      return '[(' + typesInArray(choice) + ']';
+    } else if (choice === null) {
+      return 'null';
+    } else {
+      return choice.name;
+    }
+  });
+  return JSON.stringify(names);
+};
 /**
  * Ensure value matches one of the provided arguments (arguments can be anything that can be used as a matcher, like
  * String or an object with matcher properties)
@@ -125,7 +137,7 @@ function oneOf() {
         return true;
       } catch (err) {}
     }
-    throw new MatchError('Expected %s to be one of %s', JSON.stringify(value), JSON.stringify(args));
+    throw new MatchError('Expected %s to be one of %s', JSON.stringify(value), typesInArray(args));
   };
 }
 
@@ -161,17 +173,57 @@ function matches(value, pattern) {
   }
 }
 
+function validateClassPattern(value, pattern) {
+  var valid = undefined;
+  // Value is an instance, pattern is a class
+  if (value.constructor.name !== 'Function' && pattern.constructor.name === 'Function') {
+    valid = value instanceof pattern;
+    // Value and pattern are both classes
+  } else {
+      valid = String(pattern.name) === String(value.name);
+    }
+  return valid;
+}
+
+function getExpectedType(pattern) {
+  var expectedType = JSON.stringify(pattern);
+  if (expectedType === undefined && pattern.name) {
+    expectedType = pattern.name;
+  }
+  if (expectedType === 'Function') {
+    expectedType = expectedType.toLowerCase();
+  }
+  return expectedType;
+}
+
 function checkType(value, pattern) {
   var strict = arguments.length <= 2 || arguments[2] === undefined ? true : arguments[2];
 
   var valid = true;
   var typeMap = scalarTypeMap(pattern);
   if (typeMap) {
-    if (typeof value !== typeMap) {
+    if (typeof value !== typeMap.toLowerCase()) {
       throw new MatchError('Expected %s to be a %s', JSON.stringify(value), typeMap);
     }
   } else if (pattern instanceof Function && nativeTypes.indexOf(pattern) < 0) {
-    valid = pattern(value);
+    try {
+      // Pattern is a class that should be run with new
+      valid = pattern(value);
+    } catch (e) {
+      // Fallow up from onOf
+      if (e.name == 'MatchError') {
+        throw e;
+      } else if (pattern.constructor) {
+        valid = validateClassPattern(value, pattern);
+      } else {
+        // Fallback
+        valid = pattern(value);
+      }
+    }
+    // Forgot to run Space.domain.ValueObject with new
+    if (valid === undefined) {
+      valid = validateClassPattern(value, pattern);
+    }
   } else if (pattern instanceof Array && nativeTypes.indexOf(pattern) < 0) {
     valid = checkArray(value, pattern[0]);
   } else if (pattern instanceof RegExp && nativeTypes.indexOf(pattern) < 0) {
@@ -185,11 +237,25 @@ function checkType(value, pattern) {
     if (value === pattern) {
       return true;
     } else if (!(value instanceof pattern)) {
-      throw new MatchError('Expected %s to be an instance of %s', JSON.stringify(value), JSON.stringify(pattern));
+      var expectedType = getExpectedType(pattern);
+      var msg = undefined;
+      if (expectedType === 'function') {
+        msg = 'Expected %s to be a %s';
+      } else {
+        msg = 'Expected %s to be an instance of %s';
+      }
+      throw new MatchError(msg, JSON.stringify(value), expectedType);
     }
   }
   if (!valid) {
-    throw new MatchError('Invalid match (%s expected to be %s)', JSON.stringify(value), JSON.stringify(pattern));
+    var expectedType = getExpectedType(pattern);
+    var msg = undefined;
+    if (JSON.stringify(pattern) === undefined && pattern.name) {
+      msg = 'Invalid match (%s expected to be instance of %s)';
+    } else {
+      msg = 'Invalid match (%s expected to be %s)';
+    }
+    throw new MatchError(msg, JSON.stringify(value), expectedType);
   }
   return valid;
 }
@@ -223,6 +289,12 @@ function checkObject(value, pattern) {
   }
 
   if (strict) {
+    // When value or pattern(or both) are instances, verify their class names
+    if (value.constructor || pattern.constructor) {
+      if (value.constructor.name !== pattern.constructor.name) {
+        throw new MatchError('Expected instance of %s to be instance of %s', value.constructor.name, pattern.constructor.name);
+      }
+    }
     for (var k in value) {
       if (!pattern[k]) {
         throw new MatchError('Unknown key %s in %s', k, JSON.stringify(value));
