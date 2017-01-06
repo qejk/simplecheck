@@ -175,13 +175,16 @@ function matches(value, pattern) {
 
 function validateClassPattern(value, pattern) {
   var valid = undefined;
-  // Value is an instance, pattern is a class
-  if (value.constructor.name !== 'Function' && pattern.constructor.name === 'Function') {
-    valid = value instanceof pattern;
-    // Value and pattern are both classes
-  } else {
-      valid = String(pattern.name) === String(value.name);
-    }
+  // Value is undefined however pattern is a class
+  if (value == undefined) {
+    valid = false;
+    // Value is an instance, pattern is a class
+  } else if (value.constructor.name !== 'Function' && pattern.constructor.name === 'Function') {
+      valid = value instanceof pattern;
+      // Value and pattern are both classes
+    } else {
+        valid = String(pattern.name) === String(value.name);
+      }
   return valid;
 }
 
