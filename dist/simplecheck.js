@@ -9,6 +9,7 @@ var _get = function get(_x7, _x8, _x9) { var _again = true; _function: while (_a
 exports.optional = optional;
 exports.anything = anything;
 exports.oneOf = oneOf;
+exports.Integer = Integer;
 exports.ensure = ensure;
 exports.matches = matches;
 
@@ -139,6 +140,26 @@ function oneOf() {
     }
     throw new MatchError('Expected %s to be one of %s', JSON.stringify(value), typesInArray(args));
   };
+}
+
+/**
+ * Ensure value is Integer. (arguments can be anything that can be used as a matcher, like
+ * String or an object with matcher properties)
+ * @return {mixed} Either `true` if OK or a MatchFailure if not
+ */
+
+function Integer() {
+  var args = Array.prototype.slice.call(arguments);
+  var value = args[0];
+  if (typeof value === "number" && (value | 0) === value) {
+    return true;
+  } else {
+    var expectedType = JSON.stringify(value);
+    if (value.constructor && value.constructor === Array) {
+      var _expectedType = typesInArray(args);
+    }
+    throw new MatchError('Expected Integer, got %s', JSON.stringify(value));
+  }
 }
 
 /**
