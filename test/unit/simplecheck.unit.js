@@ -1,6 +1,8 @@
 import expect, { createSpy, spyOn, isSpy } from 'expect';
 
-import { matches, oneOf, optional, ensure, MatchError, anything, Integer} from './simplecheck';
+import {
+  matches, oneOf, optional, ensure, MatchError, anything, Integer
+} from '../../src/simplecheck.js';
 
 class MyClass {
   constructor(value) {
